@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Interdiscount Berater Tool
 // @namespace    https://local.interdiscount-berater
-// @version      3.1.0
+// @version      3.1.1
 // @description  Mobiles Berater-Tool fuer Interdiscount-Produktseiten
 // @match        https://www.interdiscount.ch/*
 // @match        https://www.interdiscount.test/*
@@ -30,7 +30,7 @@
       cart: "idb-cart",
       debug: "idb_debug"
     },
-    VERSION: "3.1.0",
+    VERSION: "3.1.1",
     PREFIX: "[ID-Berater]",
     RETRY: [0, 250, 700, 1800],
     SHORT_SPEC_GROUPS: 4,
@@ -292,6 +292,57 @@
       }
     }
     return null;
+  }
+
+  // Service cards on the mobile PDP sometimes concatenate adjacent DOM text
+  // without a space, e.g. "CHF 62.602 Jahre Garantie...".
+  // The generic parser can interpret "62.602" as a thousands-formatted value.
+  // For services, prefer exactly two decimal digits after CHF and stop there.
+  function parseServicePrice(v) {
+    var text = safeText(v)
+      .replace(/[’‘`´]/g, "'")
+      .replace(/[–—]/g, "-");
+
+    if (!text) return null;
+
+    var patterns = [
+      /CHF\s*(\d{1,3}(?:'\d{3})+[.,]\d{2})/i,      // CHF 1'299.95
+      /CHF\s*(\d{1,3}(?:,\d{3})+\.\d{2})/i,      // CHF 1,299.95
+      /CHF\s*(\d{1,3}(?:\.\d{3})+,\d{2})/i,      // CHF 1.299,95
+      /CHF\s*(\d+[.,]\d{2})/i,                     // CHF 62.60 / 62,60
+      /CHF\s*(\d+(?:[.,]-|-))/i                     // CHF 62.- / 62,-
+    ];
+
+    for (var i = 0; i < patterns.length; i++) {
+      var m = text.match(patterns[i]);
+      if (!m) continue;
+      var amount = normalizePriceToken(m[1]);
+      if (amount != null) {
+        return {
+          raw: safeText(m[1]),
+          amount: amount,
+          formatted: formatPrice(amount)
+        };
+      }
+    }
+
+    // Fallback for layouts where "CHF" is in a separate element.
+    // Deliberately take only two decimal digits so a following "1 Jahr"/"2 Jahre"
+    // cannot become part of the price.
+    var dec = text.match(/(\d{1,3}(?:'\d{3})+|\d+)[.,](\d{2})/);
+    if (dec) {
+      var token = dec[1] + "." + dec[2];
+      var amount2 = normalizePriceToken(token);
+      if (amount2 != null) {
+        return {
+          raw: safeText(dec[0]),
+          amount: amount2,
+          formatted: formatPrice(amount2)
+        };
+      }
+    }
+
+    return parseSwissPrice(text);
   }
 
   // ============================================================
@@ -587,7 +638,7 @@
       var ns = root.querySelectorAll("li, [data-service-item], .service-option, label");
       for (var i = 0; i < ns.length; i++) {
         var raw = safeText(ns[i].textContent);
-        var pr = parseSwissPrice(raw);
+        var pr = parseServicePrice(raw);
         var nm = cleanServiceText(raw);
         var key = nm.toLowerCase();
         if (nm && nm.length > 3 && !seen[key]) {
@@ -1650,6 +1701,23 @@
       };
     });
 
+    var servicePriceCases = [
+      ["CHF 62.602 Jahre Garantieverlängerung", 62.60],
+      ["CHF 89.951 Jahr Mobile Protection", 89.95],
+      ["CHF 169.902 Jahre Mobile Protection", 169.90]
+    ];
+
+    servicePriceCases.forEach(function (tc) {
+      var p = parseServicePrice(tc[0]);
+      var got = p ? p.amount : null;
+      tests.push({
+        name: "parseServicePrice(" + tc[0] + ")",
+        ok: got === tc[1],
+        expected: tc[1],
+        got: got
+      });
+    });
+
     var allOk = tests.every(function (t) { return t.ok; });
     var out = { version: CONFIG.VERSION, ok: allOk, tests: tests };
     if (console.table) console.table(tests);
@@ -1704,6 +1772,7 @@
     showOffer: showOffer,
     showSettings: showSettings,
     parseSwissPrice: parseSwissPrice,
+    parseServicePrice: parseServicePrice,
     invalidateCache: invalidateCache,
     selfTest: selfTest
   });
