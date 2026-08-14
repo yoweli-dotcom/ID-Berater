@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Interdiscount Berater Tool
 // @namespace    https://local.interdiscount-berater
-// @version      3.1.1
+// @version      3.1.2
 // @description  Mobiles Berater-Tool fuer Interdiscount-Produktseiten
 // @match        https://www.interdiscount.ch/*
 // @match        https://www.interdiscount.test/*
@@ -30,14 +30,14 @@
       cart: "idb-cart",
       debug: "idb_debug"
     },
-    VERSION: "3.1.1",
+    VERSION: "3.1.2",
     PREFIX: "[ID-Berater]",
     RETRY: [0, 250, 700, 1800],
     SHORT_SPEC_GROUPS: 4,
     CART_SCHEMA: 2,
     MAX_DIAGNOSTICS: 200,
     SPEC_EXPAND_MAX: 5,
-    LEGAL: "Preis- und Sortimentsänderungen vorbehalten. Alle Angaben ohne Gewähr. Massgebend sind die aktuellen Preise und Bedingungen auf interdiscount.ch."
+    LEGAL: "Preis- und SortimentsÃ¤nderungen vorbehalten. Alle Angaben ohne GewÃ¤hr. Massgebend sind die aktuellen Preise und Bedingungen auf interdiscount.ch."
   };
 
   // ============================================================
@@ -45,7 +45,7 @@
   // Conservative rules: avoid offering setup packages on accessories.
   // ============================================================
 
-  var ACCESSORY_BLOCK = /hülle|huelle|case|cover|schutzglas|folie|display.?schutz|ladegerät|ladegeraet|charger|kabel|adapter|halterung|tasche|sleeve|keyboard|tastatur|maus|mouse|stift|pen|stylus|dock|docking|powerbank|kopfhörer|kopfhoerer|headset|zubehör|zubehoer/i;
+  var ACCESSORY_BLOCK = /hÃ¼lle|huelle|case|cover|schutzglas|folie|display.?schutz|ladegerÃ¤t|ladegeraet|charger|kabel|adapter|halterung|tasche|sleeve|keyboard|tastatur|maus|mouse|stift|pen|stylus|dock|docking|powerbank|kopfhÃ¶rer|kopfhoerer|headset|zubehÃ¶r|zubehoer/i;
 
   var SERVICE_PACKAGES = [
     {
@@ -54,7 +54,7 @@
       exclude: ACCESSORY_BLOCK,
       items: [
         { name: "Mobile Easy Basic", amount: 29.95 },
-        { name: "Mobile Easy Comfort", amount: 49.95 },
+        { name: "Mobile Easy Comfort", amount: 39.95 },
         { name: "Mobile Easy Transfer", amount: 39.95 },
         { name: "Mobile Easy Anticrash", amount: 34.95 },
         { name: "Mobile Easy Privacy", amount: 39.95 },
@@ -63,12 +63,13 @@
       ]
     },
     {
-      group: "PC Easy Services – Windows",
+      group: "PC Easy Services â€“ Windows",
       match: /laptop|notebook|desktop|computer|\bpc\b|thinkpad|ideapad|pavilion|surface\s*pro|surface\s*laptop|windows/i,
       exclude: /macbook|imac|macos|\bmac\b/i,
       items: [
         { name: "PC Easy Service 1 (Windows)", amount: 99.95 },
-        { name: "PC Easy Service 2 (Windows)", amount: 139.95 }
+        { name: "PC Easy Service 2 (Windows)", amount: 139.95 },
+        { name: "PC Easy Service 3 (Windows)", amount: 29.95 }
       ]
     },
     {
@@ -77,7 +78,8 @@
       exclude: ACCESSORY_BLOCK,
       items: [
         { name: "MAC Easy Service 1", amount: 69.95 },
-        { name: "MAC Easy Service 2", amount: 99.95 }
+        { name: "MAC Easy Service 2", amount: 99.95 },
+        { name: "MAC Easy Service 3", amount: 29.95 }
       ]
     }
   ];
@@ -94,7 +96,7 @@
     { key: "prozessor",    label: "Prozessor",                 match: /prozessor|cpu|chip|kern|core|ghz|apple.*m\d|snapdragon|dimensity/i },
     { key: "grafik",       label: "Grafik",                    match: /grafik|gpu|graphics|geforce|radeon|intel\s*(arc|iris|uhd)|vram/i },
     { key: "akku",         label: "Akku & Energie",            match: /akku|batterie|battery|mah|laufzeit|laden|watt|wireless.*charg|induktiv/i },
-    { key: "konnektiv",    label: "Konnektivität",             match: /wifi|wi-fi|wlan|bluetooth|nfc|5g|4g|lte|sim|esim|usb|anschluss|port|hdmi|thunderbolt|ethernet|infrarot|gps/i },
+    { key: "konnektiv",    label: "KonnektivitÃ¤t",             match: /wifi|wi-fi|wlan|bluetooth|nfc|5g|4g|lte|sim|esim|usb|anschluss|port|hdmi|thunderbolt|ethernet|infrarot|gps/i },
     { key: "betriebssys",  label: "Betriebssystem",            match: /betriebssystem|\bos\b|android|ios|windows|macos|chrome.*os/i },
     { key: "dimension",    label: "Abmessungen",               match: /abmessung|dimension|breite|h.he|tiefe|l.nge|masse|format|zoll|inch|cm\b|mm\b|gewicht.*g\b/i },
     { key: "energie",      label: "Energie & Nachhaltigkeit",   match: /energieeffizienz|energielabel|verbrauch|kwh|standby|nachhaltig|recycl/i },
@@ -215,8 +217,8 @@
 
   // ============================================================
   // PRICE
-  // Supports: 1299 | 1299.- | 1299.95 | 1'299.95 | 1’299.95 |
-  //           1,299.95 | 1.299,95 | CHF 1'299.–
+  // Supports: 1299 | 1299.- | 1299.95 | 1'299.95 | 1â€™299.95 |
+  //           1,299.95 | 1.299,95 | CHF 1'299.â€“
   // ============================================================
 
   function formatPrice(a) {
@@ -228,8 +230,8 @@
   function normalizePriceToken(token) {
     var t = safeText(token)
       .replace(/CHF/gi, "")
-      .replace(/[’‘`´]/g, "'")
-      .replace(/[–—]/g, "-")
+      .replace(/[â€™â€˜`Â´]/g, "'")
+      .replace(/[â€“â€”]/g, "-")
       .replace(/\s+/g, "")
       .replace(/\.-$/g, ".00")
       .replace(/,-$/g, ",00")
@@ -272,8 +274,8 @@
 
   function parseSwissPrice(v) {
     var text = safeText(v)
-      .replace(/[’‘`´]/g, "'")
-      .replace(/[–—]/g, "-");
+      .replace(/[â€™â€˜`Â´]/g, "'")
+      .replace(/[â€“â€”]/g, "-");
 
     if (!text) return null;
 
@@ -300,8 +302,8 @@
   // For services, prefer exactly two decimal digits after CHF and stop there.
   function parseServicePrice(v) {
     var text = safeText(v)
-      .replace(/[’‘`´]/g, "'")
-      .replace(/[–—]/g, "-");
+      .replace(/[â€™â€˜`Â´]/g, "'")
+      .replace(/[â€“â€”]/g, "-");
 
     if (!text) return null;
 
@@ -620,28 +622,147 @@
   // SERVICES EXTRACTION
   // ============================================================
 
-  function cleanServiceText(v) {
-    var t = safeText(v)
-      .replace(/[’‘`´]/g, "'")
-      .replace(/[–—]/g, "-");
+  function escapeRegExp(v) {
+    return String(v == null ? "" : v).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
 
-    t = t.replace(/^(?:CHF\s*)?(?:\d{1,3}(?:['.,]\d{3})+|\d+)(?:[.,]\d{2}|[.,]-|-)\s*/i, "");
-    t = t.split(/Interdiscount verlängert|Mit unserer|Weitere Informationen|Mit dem Kauf bestätigen/i)[0];
+  function cleanServiceText(v, price) {
+    var t = safeText(v)
+      .replace(/[â€™â€˜`Â´]/g, "'")
+      .replace(/[â€“â€”]/g, "-");
+
+    // Remove only the detected price. Do not consume a duration digit that
+    // follows immediately in flattened DOM text (e.g. CHF 62.602 Jahre...).
+    if (price && price.raw) {
+      var rawPrice = safeText(price.raw).replace(/[â€™â€˜`Â´]/g, "'").replace(/[â€“â€”]/g, "-");
+      if (rawPrice) {
+        var priceRe = new RegExp("(?:CHF\\s*)?" + escapeRegExp(rawPrice), "i");
+        t = t.replace(priceRe, " ");
+      }
+    } else {
+      t = t.replace(/CHF\s*\d+(?:[.,]\d{2}|[.,]-|-)/i, " ");
+    }
+
+    t = t.split(/Interdiscount verlÃ¤ngert|Mit unserer|Weitere Informationen|Mit dem Kauf bestÃ¤tigen/i)[0];
     return safeText(t);
   }
 
+  function looksLikeServiceName(v) {
+    var t = safeText(v);
+    if (!t || t.length < 4 || t.length > 180) return false;
+    if (/^CHF\b/i.test(t) || /^\d+(?:[.,]\d{2}|[.,]-|-)$/i.test(t)) return false;
+    return /garantie|versicherung|protection|schutz|care|service/i.test(t);
+  }
+
+  function getServicePriceFromNode(node) {
+    if (!node) return null;
+
+    var selectors = [
+      "[data-price]",
+      "[data-testid*='price']",
+      "[class*='price']",
+      "[class*='Price']",
+      "[aria-label*='CHF']"
+    ];
+    var priceNodes = [];
+    var seenNodes = new Set();
+
+    selectors.forEach(function (sel) {
+      var found;
+      try { found = node.querySelectorAll(sel); } catch (e) { found = []; }
+      for (var i = 0; i < found.length; i++) {
+        if (!seenNodes.has(found[i])) {
+          seenNodes.add(found[i]);
+          priceNodes.push(found[i]);
+        }
+      }
+    });
+
+    // Generic fallback for changing class names: inspect short leaf elements.
+    var descendants = node.querySelectorAll("span, strong, b, p, div");
+    for (var j = 0; j < descendants.length; j++) {
+      var el = descendants[j];
+      if (el.children.length > 0) continue;
+      var txt = safeText(el.textContent);
+      if (txt && txt.length <= 40 && (/CHF/i.test(txt) || /^\d+[.,]\d{2}$/.test(txt))) {
+        if (!seenNodes.has(el)) {
+          seenNodes.add(el);
+          priceNodes.push(el);
+        }
+      }
+    }
+
+    // The shortest matching node is normally the dedicated price element.
+    priceNodes.sort(function (a, b) {
+      return safeText(a.textContent).length - safeText(b.textContent).length;
+    });
+
+    for (var k = 0; k < priceNodes.length; k++) {
+      var parsed = parseServicePrice(safeText(priceNodes[k].textContent));
+      if (parsed) return parsed;
+    }
+
+    // Last resort: parse the whole service card. parseServicePrice stops after
+    // two decimal digits, so CHF 62.602 Jahre... resolves to CHF 62.60.
+    return parseServicePrice(safeText(node.textContent));
+  }
+
+  function getServiceNameFromNode(node, price) {
+    if (!node) return "";
+
+    var preferred = [
+      "[data-service-name]",
+      "[data-testid*='service-name']",
+      "[data-testid*='title']",
+      "[class*='service-name']",
+      "[class*='ServiceName']",
+      "[class*='title']",
+      "[class*='Title']",
+      "h2", "h3", "h4", "strong", "b"
+    ];
+
+    for (var i = 0; i < preferred.length; i++) {
+      var nodes;
+      try { nodes = node.querySelectorAll(preferred[i]); } catch (e) { nodes = []; }
+      for (var j = 0; j < nodes.length; j++) {
+        var txt = cleanServiceText(nodes[j].textContent, price);
+        if (looksLikeServiceName(txt)) return txt;
+      }
+    }
+
+    var leaves = node.querySelectorAll("span, p, div, label");
+    var candidates = [];
+    for (var k = 0; k < leaves.length; k++) {
+      if (leaves[k].children.length > 0) continue;
+      var leafText = cleanServiceText(leaves[k].textContent, price);
+      if (looksLikeServiceName(leafText)) candidates.push(leafText);
+    }
+    candidates.sort(function (a, b) { return a.length - b.length; });
+    if (candidates.length) return candidates[0];
+
+    return cleanServiceText(node.textContent, price);
+  }
+
   function extractServices() {
-    var roots = queryAll(["[data-services]", ".services", "[data-service-options]", "[data-testid='collapsible-services']"]);
+    var roots = queryAll([
+      "[data-services]",
+      ".services",
+      "[data-service-options]",
+      "[data-testid='collapsible-services']",
+      "[data-testid*='service']"
+    ]);
     var svcs = [], seen = {};
 
     roots.forEach(function (root) {
-      var ns = root.querySelectorAll("li, [data-service-item], .service-option, label");
+      var ns = Array.prototype.slice.call(root.querySelectorAll("li, [data-service-item], .service-option, label, [data-testid*='service-option'], [class*='service-option']"));
+      if (!ns.length && looksLikeServiceName(root.textContent)) ns = [root];
       for (var i = 0; i < ns.length; i++) {
-        var raw = safeText(ns[i].textContent);
-        var pr = parseServicePrice(raw);
-        var nm = cleanServiceText(raw);
+        var card = ns[i];
+        var pr = getServicePriceFromNode(card);
+        var nm = getServiceNameFromNode(card, pr);
         var key = nm.toLowerCase();
-        if (nm && nm.length > 3 && !seen[key]) {
+
+        if (nm && nm.length > 3 && pr && !seen[key]) {
           seen[key] = true;
           svcs.push({ name: nm, price: pr });
         }
@@ -747,9 +868,9 @@
     if (!name && jl && jl.name) name = safeText(jl.name);
     if (!name) {
       var og = document.querySelector("meta[property='og:title']");
-      if (og) name = safeText((og.getAttribute("content") || "").replace(/\s*[-–|]\s*Interdiscount\s*$/i, ""));
+      if (og) name = safeText((og.getAttribute("content") || "").replace(/\s*[-â€“|]\s*Interdiscount\s*$/i, ""));
     }
-    if (!name) name = safeText(document.title.replace(/\s*[-–|]\s*Interdiscount\s*$/i, ""));
+    if (!name) name = safeText(document.title.replace(/\s*[-â€“|]\s*Interdiscount\s*$/i, ""));
 
     var price = readMainPrice(jl);
 
@@ -799,8 +920,41 @@
   }
 
   // ============================================================
-  // QR CODE – qrcode-generator 1.4.4 via @require
+  // QR CODE â€“ Tampermonkey @require + Bookmarklet lazy loader
   // ============================================================
+
+
+  function ensureQrLibrary() {
+    if (typeof qrcode === "function") return Promise.resolve(true);
+    if (runtime.qrPromise) return runtime.qrPromise;
+
+    runtime.qrPromise = new Promise(function (resolve) {
+      var existing = document.querySelector("script[data-idb-qr-lib]");
+      if (existing) {
+        if (typeof qrcode === "function") { resolve(true); return; }
+        existing.addEventListener("load", function () { resolve(typeof qrcode === "function"); }, { once: true });
+        existing.addEventListener("error", function () { resolve(false); }, { once: true });
+        setTimeout(function () { resolve(typeof qrcode === "function"); }, 2500);
+        return;
+      }
+
+      var sc = document.createElement("script");
+      sc.src = "https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js";
+      sc.async = true;
+      sc.setAttribute("data-idb-qr-lib", "1");
+      sc.onload = function () {
+        debugLog("qr-lib", "loaded");
+        resolve(typeof qrcode === "function");
+      };
+      sc.onerror = function () {
+        debugLog("qr-lib", "load failed");
+        resolve(false);
+      };
+      (document.head || document.documentElement).appendChild(sc);
+    });
+
+    return runtime.qrPromise;
+  }
 
   function generateQrDataUrl(text, size) {
     size = size || 200;
@@ -826,7 +980,7 @@
     if (dataUrl) {
       return '<img src="' + dataUrl + '" width="' + dim + '" height="' + dim + '" style="image-rendering:pixelated;border-radius:4px" alt="QR zur Produktseite">';
     }
-    return '<div class="idb-qr-fallback" aria-label="QR nicht verfügbar">LINK</div>';
+    return '<div class="idb-qr-fallback" aria-label="QR nicht verfÃ¼gbar">LINK</div>';
   }
 
   // ============================================================
@@ -986,9 +1140,9 @@
   }
 
   function executePdf(bodyHtml, filename) {
-    var safe = (filename || "Dokument").replace(/[^a-zA-Z0-9äöüÄÖÜ\-_ ]/g, "");
+    var safe = (filename || "Dokument").replace(/[^a-zA-Z0-9Ã¤Ã¶Ã¼Ã„Ã–Ãœ\-_ ]/g, "");
     var full = '<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + escapeHtml(safe) + '</title><style>' + buildPdfCss() + '</style></head><body>' +
-      '<div class="p-toolbar"><span>📄 ' + escapeHtml(safe) + '</span><button onclick="window.print()">Drucken / PDF speichern</button></div>' +
+      '<div class="p-toolbar"><span>ðŸ“„ ' + escapeHtml(safe) + '</span><button onclick="window.print()">Drucken / PDF speichern</button></div>' +
       bodyHtml + '</body></html>';
 
     var blob = new Blob([full], { type: "text/html;charset=utf-8" });
@@ -1024,7 +1178,7 @@
 
     var h = '<div class="p-sheet"><div class="p-hdr"><div class="p-hdr-l">';
     if (prod.imageUrl) h += '<img src="' + escapeHtml(prod.imageUrl) + '" alt="">';
-    h += '<div><div class="p-brand">Interdiscount</div><div class="p-title">' + escapeHtml(prod.name || "Produkt") + '</div><div class="p-price">' + escapeHtml(prod.price ? prod.price.formatted : "–") + '</div><div class="p-meta">Art. ' + escapeHtml(prod.articleNumber || "–") + (prod.brand ? ' · ' + escapeHtml(prod.brand) : '') + '</div></div></div><div class="p-hdr-r">' + escapeHtml(d) + '<br>Berater: ' + escapeHtml(settings.advisorName || "–") + '<br>Filiale: ' + escapeHtml(settings.branch || "–") + '</div></div>';
+    h += '<div><div class="p-brand">Interdiscount</div><div class="p-title">' + escapeHtml(prod.name || "Produkt") + '</div><div class="p-price">' + escapeHtml(prod.price ? prod.price.formatted : "â€“") + '</div><div class="p-meta">Art. ' + escapeHtml(prod.articleNumber || "â€“") + (prod.brand ? ' Â· ' + escapeHtml(prod.brand) : '') + '</div></div></div><div class="p-hdr-r">' + escapeHtml(d) + '<br>Berater: ' + escapeHtml(settings.advisorName || "â€“") + '<br>Filiale: ' + escapeHtml(settings.branch || "â€“") + '</div></div>';
 
     visibleGroups.forEach(function (g) {
       h += '<div class="p-sec"><div class="p-sec-t">' + escapeHtml(g.label) + '</div>';
@@ -1083,9 +1237,9 @@
   }
 
   function executeOfferPdf(bodyHtml, filename) {
-    var safe = (filename || "Zusammenstellung").replace(/[^a-zA-Z0-9äöüÄÖÜ\-_ ]/g, "");
+    var safe = (filename || "Zusammenstellung").replace(/[^a-zA-Z0-9Ã¤Ã¶Ã¼Ã„Ã–Ãœ\-_ ]/g, "");
     var full = '<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + escapeHtml(safe) + '</title><style>' + buildOfferPdfCss() + '</style></head><body>' +
-      '<div class="po-toolbar"><span>📄 ' + escapeHtml(safe) + '</span><button onclick="window.print()">Drucken / PDF speichern</button></div>' +
+      '<div class="po-toolbar"><span>ðŸ“„ ' + escapeHtml(safe) + '</span><button onclick="window.print()">Drucken / PDF speichern</button></div>' +
       bodyHtml + '</body></html>';
 
     var blob = new Blob([full], { type: "text/html;charset=utf-8" });
@@ -1110,8 +1264,8 @@
 
   function buildPrintOffer(cart, settings) {
     var d = new Date().toLocaleDateString("de-CH"), tot = calcCartTotal(cart);
-    var h = '<div class="po-offer"><div class="po-hdr"><div><div class="po-brand">Interdiscount</div><div class="po-title">Zusammenstellung</div><div class="po-subtitle">Persönliche Produktzusammenstellung</div></div><div class="po-meta">' + escapeHtml(d) + '<br>Berater: ' + escapeHtml(settings.advisorName || "–") + '<br>Filiale: ' + escapeHtml(settings.branch || "–") + '</div></div>';
-    h += '<div class="po-adv"><span>Berater: ' + escapeHtml(settings.advisorName || "–") + '</span><span>Filiale: ' + escapeHtml(settings.branch || "–") + '</span><span>Datum: ' + escapeHtml(d) + '</span></div>';
+    var h = '<div class="po-offer"><div class="po-hdr"><div><div class="po-brand">Interdiscount</div><div class="po-title">Zusammenstellung</div><div class="po-subtitle">PersÃ¶nliche Produktzusammenstellung</div></div><div class="po-meta">' + escapeHtml(d) + '<br>Berater: ' + escapeHtml(settings.advisorName || "â€“") + '<br>Filiale: ' + escapeHtml(settings.branch || "â€“") + '</div></div>';
+    h += '<div class="po-adv"><span>Berater: ' + escapeHtml(settings.advisorName || "â€“") + '</span><span>Filiale: ' + escapeHtml(settings.branch || "â€“") + '</span><span>Datum: ' + escapeHtml(d) + '</span></div>';
     h += '<div class="po-colhdr"><span class="po-c-prod">Produkt</span><span class="po-c-price">Preis</span></div>';
 
     cart.forEach(function (it) {
@@ -1122,7 +1276,7 @@
       h += '</div><div class="po-pr">' + escapeHtml(formatPrice(it.basePrice || 0)) + '</div></div>';
 
       (it.selectedServices || []).forEach(function (s) {
-        h += '<div class="po-svc"><span class="po-svc-arrow">↳</span><span class="po-svc-nm">' + escapeHtml(s.name) + '</span><span class="po-svc-pr">' + escapeHtml(formatPrice(s.amount)) + '</span></div>';
+        h += '<div class="po-svc"><span class="po-svc-arrow">â†³</span><span class="po-svc-nm">' + escapeHtml(s.name) + '</span><span class="po-svc-pr">' + escapeHtml(formatPrice(s.amount)) + '</span></div>';
       });
       h += '</div>';
     });
@@ -1192,7 +1346,7 @@
     var d = new Date().toLocaleDateString("de-CH");
     return '<div class="idb-doc-card"><div class="idb-doc-hdr">' +
       (prod.imageUrl ? '<img src="' + escapeHtml(prod.imageUrl) + '" alt="">' : '<div style="width:72px;height:72px;background:var(--idb-soft);border-radius:6px"></div>') +
-      '<div class="idb-doc-info"><div class="idb-brand">Interdiscount</div><h1 class="idb-doc-title">' + escapeHtml(prod.name || "Produkt") + '</h1><div class="idb-doc-price">' + escapeHtml(prod.price ? prod.price.formatted : "–") + '</div><div class="idb-doc-meta"><span>Art. ' + escapeHtml(prod.articleNumber || "–") + '</span>' + (prod.brand ? '<span>' + escapeHtml(prod.brand) + '</span>' : '') + '</div></div></div><div class="idb-doc-meta"><span>' + escapeHtml(d) + '</span><span>Berater: ' + escapeHtml(settings.advisorName || "–") + '</span><span>Filiale: ' + escapeHtml(settings.branch || "–") + '</span></div></div>';
+      '<div class="idb-doc-info"><div class="idb-brand">Interdiscount</div><h1 class="idb-doc-title">' + escapeHtml(prod.name || "Produkt") + '</h1><div class="idb-doc-price">' + escapeHtml(prod.price ? prod.price.formatted : "â€“") + '</div><div class="idb-doc-meta"><span>Art. ' + escapeHtml(prod.articleNumber || "â€“") + '</span>' + (prod.brand ? '<span>' + escapeHtml(prod.brand) + '</span>' : '') + '</div></div></div><div class="idb-doc-meta"><span>' + escapeHtml(d) + '</span><span>Berater: ' + escapeHtml(settings.advisorName || "â€“") + '</span><span>Filiale: ' + escapeHtml(settings.branch || "â€“") + '</span></div></div>';
   }
 
   // ============================================================
@@ -1315,7 +1469,7 @@
   async function showDatasheet() {
     var bar = document.getElementById(CONFIG.IDS.stickyBar);
     var dsBtn = bar ? bar.querySelector("[data-a='datasheet']") : null;
-    if (dsBtn) { dsBtn.textContent = "Lade Spez…"; dsBtn.disabled = true; }
+    if (dsBtn) { dsBtn.textContent = "Lade Spezâ€¦"; dsBtn.disabled = true; }
 
     try {
       await prepareSpecificationsForExtraction();
@@ -1324,6 +1478,8 @@
     } finally {
       if (dsBtn) { dsBtn.textContent = "Datenblatt"; dsBtn.disabled = false; }
     }
+
+    try { await ensureQrLibrary(); } catch (e3) { debugLog("qr-lib", "unavailable"); }
 
     invalidateCache();
     var prod = getProductData(true), sets = getSettings();
@@ -1343,7 +1499,7 @@
 
     var body = '<div class="idb-mode-tabs"><button type="button" class="active" data-m="short">Kurzblatt</button><button type="button" data-m="detail">Detailblatt</button></div><div data-v="short">' + shortH + '</div><div data-v="detail" style="display:none">' + detailH + '</div>';
     var ov = showOverlay(body, [
-      { label: "📄 PDF", attr: "data-idb-pdf" },
+      { label: "ðŸ“„ PDF", attr: "data-idb-pdf" },
       { label: "Schliessen", attr: "data-idb-close" }
     ]);
 
@@ -1380,12 +1536,12 @@
           rows += '<div class="idb-off-main"><div class="idb-off-img">' + (it.imageUrl ? '<img src="' + escapeHtml(it.imageUrl) + '" alt="">' : '') + '</div>';
           rows += '<div class="idb-off-nm">' + escapeHtml(it.name) + '</div>';
           rows += '<div class="idb-off-pr">' + escapeHtml(formatPrice(it.basePrice || 0)) + '</div>';
-          rows += '<button class="idb-del-btn" data-del-item="' + idx + '" title="Entfernen">×</button></div>';
+          rows += '<button class="idb-del-btn" data-del-item="' + idx + '" title="Entfernen">Ã—</button></div>';
 
           if (it.selectedServices && it.selectedServices.length) {
             rows += '<div class="idb-off-svcs">';
             it.selectedServices.forEach(function (s, si) {
-              rows += '<div class="idb-off-svc"><span class="idb-svc-name">↳ ' + escapeHtml(s.name) + '</span><span class="idb-svc-pr">' + escapeHtml(formatPrice(s.amount)) + '</span><button class="idb-del-svc" data-del-svc="' + idx + '-' + si + '" title="Service entfernen">×</button></div>';
+              rows += '<div class="idb-off-svc"><span class="idb-svc-name">â†³ ' + escapeHtml(s.name) + '</span><span class="idb-svc-pr">' + escapeHtml(formatPrice(s.amount)) + '</span><button class="idb-del-svc" data-del-svc="' + idx + '-' + si + '" title="Service entfernen">Ã—</button></div>';
             });
             rows += '</div>';
           }
@@ -1393,11 +1549,11 @@
         });
       }
 
-      return '<section class="idb-sheet"><article class="idb-off-card"><header class="idb-off-hdr"><div><div class="idb-brand">Interdiscount</div><strong>Zusammenstellung</strong></div><div style="font-size:10px;color:var(--idb-muted)">' + escapeHtml(d) + '</div></header><div class="idb-off-adv">Berater: ' + escapeHtml(sets.advisorName || "–") + ' · Filiale: ' + escapeHtml(sets.branch || "–") + '</div><section class="idb-off-items">' + rows + '</section><div class="idb-off-tot"><strong>Total</strong><span>' + escapeHtml(formatPrice(tot)) + '</span></div><footer class="idb-off-foot">' + escapeHtml(CONFIG.LEGAL) + '</footer></article></section>';
+      return '<section class="idb-sheet"><article class="idb-off-card"><header class="idb-off-hdr"><div><div class="idb-brand">Interdiscount</div><strong>Zusammenstellung</strong></div><div style="font-size:10px;color:var(--idb-muted)">' + escapeHtml(d) + '</div></header><div class="idb-off-adv">Berater: ' + escapeHtml(sets.advisorName || "â€“") + ' Â· Filiale: ' + escapeHtml(sets.branch || "â€“") + '</div><section class="idb-off-items">' + rows + '</section><div class="idb-off-tot"><strong>Total</strong><span>' + escapeHtml(formatPrice(tot)) + '</span></div><footer class="idb-off-foot">' + escapeHtml(CONFIG.LEGAL) + '</footer></article></section>';
     }
 
     var ov = showOverlay(render(), [
-      { label: "📄 PDF", attr: "data-idb-pdf" },
+      { label: "ðŸ“„ PDF", attr: "data-idb-pdf" },
       { label: "Leeren", attr: "data-idb-clear-cart" },
       { label: "Schliessen", attr: "data-idb-close" }
     ]);
@@ -1495,7 +1651,7 @@
     var allPkgItems = [];
     var pkgHtml = "";
     pkgs.forEach(function (pkg) {
-      pkgHtml += '<div><div class="idb-pkg-hd">Servicepakete – ' + escapeHtml(pkg.group) + '</div><div class="idb-sopts">';
+      pkgHtml += '<div><div class="idb-pkg-hd">Servicepakete â€“ ' + escapeHtml(pkg.group) + '</div><div class="idb-sopts">';
       pkg.items.forEach(function (it) {
         var idx = allPkgItems.length;
         allPkgItems.push(it);
@@ -1505,7 +1661,7 @@
     });
 
     var ov = showOverlay(
-      '<section class="idb-ss"><h1>' + escapeHtml(prod.name) + '</h1><div class="idb-ss-pr">' + escapeHtml(prod.price ? prod.price.formatted : "–") + '</div>' + svcHtml + pkgHtml + '<button type="button" class="idb-ssub" data-idb-confirm>Hinzufügen</button></section>',
+      '<section class="idb-ss"><h1>' + escapeHtml(prod.name) + '</h1><div class="idb-ss-pr">' + escapeHtml(prod.price ? prod.price.formatted : "â€“") + '</div>' + svcHtml + pkgHtml + '<button type="button" class="idb-ssub" data-idb-confirm>HinzufÃ¼gen</button></section>',
       [{ label: "Schliessen", attr: "data-idb-close" }]
     );
 
@@ -1546,7 +1702,7 @@
       saveCart(cart);
       syncBar();
       closeOverlay();
-      showToast("Hinzugefügt", prod.name);
+      showToast("HinzugefÃ¼gt", prod.name);
     });
   }
 
@@ -1570,7 +1726,8 @@
     var bar = document.createElement("nav");
     bar.id = CONFIG.IDS.stickyBar;
     bar.setAttribute("aria-label", "Berater-Tool");
-    bar.innerHTML = '<button type="button" data-a="datasheet" data-tone="red">Datenblatt</button><div class="idb-bw"><button type="button" data-a="offer" data-tone="dark">Zusammenst.</button><span class="idb-pill" data-pill style="display:none">0</span></div><button type="button" data-a="add">Hinzufügen</button><button type="button" data-a="settings" style="max-width:38px;padding:8px 5px;font-size:15px" title="Einstellungen">⚙</button>';
+    bar.setAttribute("data-idb-version", CONFIG.VERSION);
+    bar.innerHTML = '<button type="button" data-a="datasheet" data-tone="red">Datenblatt</button><div class="idb-bw"><button type="button" data-a="offer" data-tone="dark">Zusammenst.</button><span class="idb-pill" data-pill style="display:none">0</span></div><button type="button" data-a="add">HinzufÃ¼gen</button><button type="button" data-a="settings" style="max-width:38px;padding:8px 5px;font-size:15px" title="Einstellungen">âš™</button>';
 
     bar.addEventListener("click", function (e) {
       var b = e.target instanceof HTMLElement ? e.target.closest("[data-a]") : null;
@@ -1626,6 +1783,11 @@
     if (!document.body) return false;
 
     var ex = document.getElementById(CONFIG.IDS.stickyBar);
+    if (ex && ex.getAttribute("data-idb-version") !== CONFIG.VERSION) {
+      ex.remove();
+      ex = null;
+      closeOverlay();
+    }
     if (ex) {
       ensureSpacer();
       syncBar();
@@ -1682,11 +1844,11 @@
     var priceCases = [
       ["CHF 1299.95", 1299.95],
       ["CHF 1'299.95", 1299.95],
-      ["CHF 1’299.95", 1299.95],
+      ["CHF 1â€™299.95", 1299.95],
       ["CHF 1,299.95", 1299.95],
       ["CHF 1.299,95", 1299.95],
       ["1299.-", 1299],
-      ["CHF 899.–", 899],
+      ["CHF 899.â€“", 899],
       ["29.95", 29.95]
     ];
 
@@ -1702,7 +1864,7 @@
     });
 
     var servicePriceCases = [
-      ["CHF 62.602 Jahre Garantieverlängerung", 62.60],
+      ["CHF 62.602 Jahre GarantieverlÃ¤ngerung", 62.60],
       ["CHF 89.951 Jahr Mobile Protection", 89.95],
       ["CHF 169.902 Jahre Mobile Protection", 169.90]
     ];
@@ -1739,6 +1901,7 @@
 
   runtime.status = "initialized";
   summarizeCart();
+  ensureQrLibrary();
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", boot, { once: true });
@@ -1773,6 +1936,7 @@
     showSettings: showSettings,
     parseSwissPrice: parseSwissPrice,
     parseServicePrice: parseServicePrice,
+    extractServices: extractServices,
     invalidateCache: invalidateCache,
     selfTest: selfTest
   });
